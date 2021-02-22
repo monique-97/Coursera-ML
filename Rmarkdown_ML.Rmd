@@ -1,0 +1,117 @@
+---
+title: "coursera_ML"
+author: "monique-97"
+date: "22 02 2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+**data source:**
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+# aim of the project
+The goal of your project is to predict the manner of exercises, this is the "classe" variable in the training set. 
+
+
+
+
+# read libraries
+```{r, echo = TRUE}
+library(caret)
+library(randomForest)
+library(kernlab)
+library(rpart.plot)
+
+```
+
+
+# read data
+```{r, echo = TRUE}
+train_data <- read.csv("pml-training.csv")
+test_data <- read.csv("pml-testing.csv")
+```
+We have 19622 observations and 160 variables in train data, and 20 observations and 160 variables in test data.
+
+# data pre-processing
+
+## remove NAs
+```{r, echo = TRUE}
+train_data <- train_data[, colSums(is.na(train_data)) == 0] 
+test_data <- test_data[, colSums(is.na(test_data)) == 0] 
+``` 
+
+
+## take only columns of interest
+```{r, echo = TRUE}
+training <- train_data[,-c(1:7)]
+testing <-test_data[,-c(1:7)]
+```
+
+## change values into numeric
+```{r, echo = TRUE}
+classe <- train_data$classe
+train_clean <- train_data[, sapply(train_data, is.numeric)]
+train_clean$classe <- classe
+test_clean <- test_data[, sapply(test_data, is.numeric)]
+```
+
+## split training data into a training dataset and a data for validation, set seed to get reproducible results
+```{r, echo = TRUE}
+set.seed(199997)
+training_part <- createDataPartition(train_clean$classe, p=0.65, list=FALSE)
+train_values <- train_clean[training_part, ]
+test_values <- train_clean[-training_part, ]
+```
+
+## data visualization: frequency of each level
+```{r, echo = TRUE}
+barplot(table(train_values$classe), col="blue", main="Frequency of each level", xlab=" ", ylab="frequency")
+```
+Level A is the most frequent.
+
+# builting the model
+Random forest prediction model will be applied.
+
+## run random forest
+```{r, echo = TRUE}
+controltr <- trainControl(method="cv", 5)
+model_random <- train(classe ~ ., data=train_values, method="rf", trControl=controltr, ntree=100)
+model_random
+```
+
+# cross validation
+## estimate model performance
+```{r, echo = TRUE}
+prediction <- predict(model_random, test_values)
+confusionMatrix(test_values$classe, prediction)
+```
+
+# out of sample error
+## calculate the expected out of sample error and accuracy
+```{r, echo = TRUE}
+error <- 1 - as.numeric(confusionMatrix(test_values$classe, prediction)$overall[1])
+acc <- postResample(prediction, test_values$classe)
+```
+
+Out-of-sample error is 0.015%.
+
+## apply model to test dataset
+```{r, echo = TRUE}
+final_result <- predict(model_random, test_clean[, -length(names(test_clean))])
+```
+
+
+Machine learning algorithm was applied to the 20 test cases available in the test data.
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. 
+
+
